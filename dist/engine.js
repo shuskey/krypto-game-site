@@ -1,5 +1,11 @@
-export function createDeck() {
+export function createDeck(type = 'standard') {
+  if (type === 'primary') return Array.from({ length: 10 }, (_, i) => Array(5).fill(i + 1)).flat();
+  if (type !== 'standard') throw new Error('Unknown deck type.');
   return Array.from({ length: 25 }, (_, i) => Array(i < 6 ? 3 : i < 10 ? 4 : i < 17 ? 2 : 1).fill(i + 1)).flat();
+}
+export function dealHand(type = 'standard', random = Math.random) {
+  const six = shuffle(createDeck(type), random).slice(0, 6);
+  return { hand: six.slice(0, 5), target: six[5] };
 }
 export function shuffle(deck, random = Math.random) {
   const result = [...deck];

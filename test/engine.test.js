@@ -1,6 +1,23 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createDeck, shuffle, card, apply, evaluate, format, signature, isWinner } from '../dist/engine.js';
+import { createDeck, dealHand, shuffle, card, apply, evaluate, format, signature, isWinner } from '../dist/engine.js';
+test('primary age deck has five copies of each number from 1 through 10', () => {
+  const deck = createDeck('primary');
+  assert.equal(deck.length, 50);
+  for (let n = 1; n <= 10; n++) assert.equal(deck.filter(v => v === n).length, 5);
+  assert.ok(deck.every(n => n >= 1 && n <= 10));
+  assert.throws(() => createDeck('unknown'), /Unknown/);
+});
+test('every deal starts from the full selected deck and draws six without replacement', () => {
+  for (const type of ['standard', 'primary']) {
+    const first = dealHand(type, () => .99999);
+    const second = dealHand(type, () => .99999);
+    assert.deepEqual(first, second);
+    assert.equal(first.hand.length, 5);
+    const six = [...first.hand, first.target], deck = createDeck(type);
+    for (const value of six) assert.ok(six.filter(n => n === value).length <= deck.filter(n => n === value).length);
+  }
+});
 test('official deck has exactly 56 cards with the specified multiplicities', () => {
   const deck = createDeck(); assert.equal(deck.length, 56);
   for (let n = 1; n <= 25; n++) assert.equal(deck.filter(v => v === n).length, n <= 6 ? 3 : n <= 10 ? 4 : n <= 17 ? 2 : 1);
