@@ -12,7 +12,7 @@ Open http://127.0.0.1:5173. Run `npm test` for the arithmetic/deck tests, and `n
 
 The game uses one viewport: the green play area contains the dealt cards and Krypto button. Calling Krypto replaces the large cards with the solution builder; **Back to cards** returns to the deal. The right score rail shows colored player initials and points. Expand it with the chevron to see full names and this round’s answers. On narrower screens it opens over the table. Long score lists and step histories scroll within their own panels; the primary controls stay in place. Very short windows may require page scrolling to keep controls readable.
 
-Press **New game** to deal five cards and a target. Press the green **Krypto!** button when someone has an answer, then type or select their name to unlock the solution controls. Blank or whitespace-only names keep the cards and operations disabled. Tap cards and operations to build an expression. **=** makes a green result card that can be used in later lines, providing grouping without parentheses. Standard arithmetic precedence applies within each line. **Undo** removes the last token or, from an empty line, reopens the last calculation. **Clear** resets the attempt.
+New visitors immediately get a Standard-deck hand: five cards and a target. Existing saved games resume their current hand. **New game** starts a fresh game after confirmation. Press the green **Krypto!** button when someone has an answer, then type or select their name to unlock the solution controls. Blank or whitespace-only names keep the cards and operations disabled. Tap cards and operations to build an expression. **=** makes a green result card that can be used in later lines, providing grouping without parentheses. Standard arithmetic precedence applies within each line. **Undo** removes the last token or, from an empty line, reopens the last calculation. **Clear** resets the attempt.
 
 The game automatically awards one point as soon as all five original cards are used exactly once and the result matches the target and a player name is present. Different solutions can score in the same round. Reordering/regrouping addition and multiplication does not create a new solution; other structurally different expressions count separately. A solution already scored by any player cannot score again that round.
 
@@ -27,3 +27,14 @@ Rules and deck reference: [Krypto on Wikipedia](https://en.wikipedia.org/wiki/Kr
 ## Sites deployment
 
 The public Site is https://krypto-game.chummy-bard-6128.chatgpt.site. The static files in `dist/` are deployed using the project configuration in `.openai/hosting.json`. Player names and scores stay in each visitor’s browser.
+
+
+## Krypto King
+
+The browser runs an adaptation of Scott Huskey’s F# **KryptoSolver** in a dedicated module Web Worker as soon as each hand is dealt. The source algorithm is in `KryptoSolver/FSharpKrypto/Krypto.fs` and `Tree.fs` in [shuskey/KryptoSolver](https://github.com/shuskey/KryptoSolver): card permutations, all operator combinations, and every binary expression-tree grouping. This JavaScript port searches the same expression space lazily, skips interchangeable permutations of equal cards, and uses exact arithmetic with the current round’s whole-number or relaxed rules. The F# source’s optional exponent/modulo and nearest-answer modes are not part of this game.
+
+A light bulb on **Krypto King**, above **Redeal**, means a solution is cached. Clicking it reveals the calculation and awards exactly one point. Searching alone never scores. An X means no legal solution was found; the button is disabled and the table can redeal. If all solutions were already claimed, that is shown separately. Human play stays enabled while searching. If a person scores the cached answer first, Krypto King searches again for an unclaimed solution. Redealing terminates the old worker and invalidates its results. A computer point stays limited to once per round across reloads. Browser/worker errors show a retry option and are never reported as proof that no solution exists. No external AI API is called.
+
+## Sharing
+
+**Share** opens an original 1200×630 PNG with an intro-copy button and image download. Open Graph and X card metadata use the same image and public Site URL. Regenerate the image with `tools/create_social_preview.py` using Python with Pillow and the listed macOS fonts. The intro is also available in `share-intro.md`.

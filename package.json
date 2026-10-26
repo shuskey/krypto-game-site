@@ -7,6 +7,6 @@
     "dev": "node server.mjs",
     "start": "node server.mjs",
     "test": "node --test",
-    "build": "node --check dist/app.js && node --check dist/engine.js"
+    "build": "node --check dist/app.js && node --check dist/engine.js && node --check dist/solver.js && node --check dist/solver-worker.js && node --check dist/scoring.js"
   }
 }
