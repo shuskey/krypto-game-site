@@ -1,0 +1,12 @@
+{
+  "name": "krypto-game-site",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node server.mjs",
+    "start": "node server.mjs",
+    "test": "node --test",
+    "build": "node --check dist/app.js && node --check dist/engine.js"
+  }
+}

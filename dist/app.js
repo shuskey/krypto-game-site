@@ -1,0 +1,128 @@
+import { createDeck, shuffle, card, evaluate, format, expression, signature, isWinner } from './engine.js';
+const $ = id => document.getElementById(id);
+const KEY = 'krypto-table-v1';
+const fresh = () => ({ players: [], shoe: [], hand: null, target: null, round: 0, answers: [], whole: true, nextWhole: true, sound: true });
+function restore() {
+  try {
+    const s = JSON.parse(localStorage.getItem(KEY));
+    const validCard = n => Number.isInteger(n) && n >= 1 && n <= 25;
+    if (!s || !Array.isArray(s.players) || !s.players.every(p => typeof p.name === 'string' && p.name.length <= 32 && Number.isSafeInteger(p.score) && p.score >= 0) || !Array.isArray(s.shoe) || !s.shoe.every(validCard) || s.shoe.length > 56 || !(s.hand === null || (Array.isArray(s.hand) && s.hand.length === 5 && s.hand.every(validCard))) || (s.hand !== null && !validCard(s.target)) || !Number.isSafeInteger(s.round) || s.round < 0 || !Array.isArray(s.answers) || !s.answers.every(a => ['name','expression','signature'].every(k => typeof a[k] === 'string')) || ['whole','nextWhole','sound'].some(k => typeof s[k] !== 'boolean')) return fresh();
+    return s;
+  } catch { return fresh(); }
+}
+let state = restore(), pool = [], tokens = [], steps = [], editing = false, awarded = false;
+function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch { $('deck-label').textContent = 'STORAGE UNAVAILABLE · SESSION ONLY'; } }
+function el(tag, className, value) { const e = document.createElement(tag); if (className) e.className = className; if (value !== undefined) e.textContent = value; return e; }
+function feedback(message, type = '') { $('feedback').textContent = message; $('feedback').className = `feedback ${type}`; }
+function render() {
+  $('round-label').textContent = state.hand ? `ROUND ${String(state.round).padStart(2, '0')} · FIND YOUR WAY` : 'READY WHEN YOU ARE';
+  $('deck-label').textContent = state.hand ? `${state.shoe.length} CARDS IN DECK` : '56-CARD DECK';
+  $('table-caption').textContent = state.hand ? `${state.whole ? 'Whole numbers' : 'Fractions & negatives welcome'} · Every card, exactly once.` : 'Deal a hand. Find a way to make the target.';
+  $('deal').replaceChildren();
+  for (let i = 0; i < 7; i++) {
+    if (i === 5) { $('deal').append(el('div', 'equals', '=')); continue; }
+    const n = state.hand ? (i === 6 ? state.target : state.hand[i]) : '?';
+    const c = el('div', `card${i === 6 ? ' target' : ''}${state.hand ? '' : ' card-back'}`);
+    c.dataset.value = n; c.setAttribute('aria-label', `${i === 6 ? 'Target' : 'Card ' + (i + 1)}: ${n}`);
+    c.style.setProperty('--tilt', `${[-3, 1, -1, 2, -2, 0, 3][i]}deg`);
+    c.append(el('span', '', state.hand ? n : '✳')); $('deal').append(c);
+  }
+  $('krypto').disabled = !state.hand; $('redeal').disabled = false;
+  $('redeal').replaceChildren(document.createTextNode(state.hand ? '↻ ' : '↗ '), el('span', '', state.hand ? 'Redeal' : 'Deal first hand'));
+  $('whole').checked = state.nextWhole;
+  $('sound').textContent = state.sound ? '♪ Sound on' : '♪ Sound off'; $('sound').setAttribute('aria-pressed', state.sound);
+  $('scores').replaceChildren(); $('players').replaceChildren();
+  if (!state.players.length) { const empty = el('div', 'empty-scores'); empty.append(el('span', 'empty-icon', '♧'), el('p', '', 'No names on the board. Yet.'), el('p', '', 'The first “Krypto!” is yours.')); $('scores').append(empty); }
+  [...state.players].sort((a, b) => b.score - a.score).forEach(p => {
+    const row = el('div', 'score-row'); row.append(el('span', 'avatar', p.name.slice(0, 2).toUpperCase()), el('span', 'score-name', p.name), el('strong', 'score-points', p.score)); $('scores').append(row);
+    const option = el('option'); option.value = p.name; $('players').append(option);
+  });
+  $('answers-section').classList.toggle('hidden', !state.answers.length); $('answers').replaceChildren();
+  state.answers.forEach(a => { const row = el('div', 'answer'), body = el('div'); body.append(el('p', '', `${a.expression} = ${state.target}`), el('small', '', a.name)); row.append(el('span', 'avatar', '✓'), body, el('span', 'point', '+1 point')); $('answers').append(row); });
+}
+function resetBuilder() { pool = state.hand.map((n, i) => card(n, `c${i}`)); tokens = []; steps = []; awarded = false; renderBuilder(); }
+function tokenNode(t, clickable = false) {
+  if (typeof t === 'string') return el('span', 'op-token', t === '-' ? '−' : t);
+  const e = el(clickable ? 'button' : 'span', `mini-card${t.id.startsWith('r') ? ' result' : ''}`);
+  e.append(document.createTextNode(format(t.value)));
+  if (t.id.startsWith('r')) e.append(el('small', '', `STEP ${t.step}`));
+  if (clickable) { e.setAttribute('aria-label', `Use ${format(t.value)}${t.step ? ' from step ' + t.step : ''}`); e.onclick = () => selectCard(t.id); }
+  return e;
+}
+function renderBuilder() {
+  $('workspace').classList.toggle('hidden', !editing); if (!editing) return;
+  $('builder-target').textContent = state.target; $('available').replaceChildren(); $('expression').replaceChildren(); $('steps').replaceChildren();
+  pool.filter(c => !tokens.includes(c)).forEach(c => { const b = tokenNode(c, true); b.disabled = tokens.length % 2 === 1 || awarded; $('available').append(b); });
+  if (!tokens.length) $('expression').append(el('span', 'placeholder', awarded ? 'Another idea? Press Krypto! again.' : 'Your calculation goes here…'));
+  else tokens.forEach(t => $('expression').append(tokenNode(t)));
+  steps.forEach((s, i) => { const row = el('div', 'step'); row.append(el('span', 'step-label', `STEP ${i + 1}`), el('span', '', s.tokens.map(t => typeof t === 'string' ? t : format(t.value)).join(' ')), el('span', '', '='), el('strong', '', format(s.result.value))); $('steps').append(row); });
+  document.querySelectorAll('[data-op]').forEach(b => b.disabled = !tokens.length || tokens.length % 2 === 0 || awarded);
+  $('calculate').disabled = tokens.length < 3 || tokens.length % 2 === 0 || awarded;
+  $('submit').disabled = awarded; $('undo').disabled = awarded || (!tokens.length && !steps.length); $('reset').disabled = awarded;
+}
+function selectCard(id) { if (awarded || tokens.length % 2) return; tokens.push(pool.find(c => c.id === id)); feedback('Keep going, or press = to save this step.'); renderBuilder(); }
+function deal(clear = false) {
+  if (clear) { const sound = state.sound, nextWhole = state.nextWhole; state = fresh(); state.sound = sound; state.nextWhole = nextWhole; }
+  if (state.shoe.length < 6) state.shoe = shuffle(createDeck());
+  state.hand = state.shoe.splice(0, 5); state.target = state.shoe.shift(); state.round++; state.answers = []; state.whole = state.nextWhole;
+  editing = false; save(); render(); renderBuilder();
+}
+$('new-game').onclick = () => state.hand || state.players.length ? $('confirm-dialog').showModal() : deal(true);
+$('keep-game').onclick = () => $('confirm-dialog').close();
+$('confirm-new').onclick = () => { $('confirm-dialog').close(); $('player').value = ''; deal(true); };
+$('redeal').onclick = () => deal();
+$('krypto').onclick = () => { editing = true; $('player').value = ''; resetBuilder(); feedback('First, enter or choose your name. Then show us your idea.'); tone([523, 659], .09); $('workspace').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'start' }); $('player').focus({ preventScroll: true }); };
+$('player').addEventListener('change', () => {
+  const name = $('player').value.trim().replace(/\s+/g, ' '); if (!name) return;
+  if (!state.players.some(p => p.name.toLocaleLowerCase() === name.toLocaleLowerCase())) state.players.push({ name, score: 0 });
+  save(); render();
+});
+$('cancel').onclick = () => { editing = false; renderBuilder(); };
+document.querySelectorAll('[data-op]').forEach(b => b.onclick = () => { if (tokens.length % 2 && !awarded) { tokens.push(b.dataset.op); renderBuilder(); } });
+$('undo').onclick = () => {
+  if (tokens.length) tokens.pop();
+  else if (steps.length) { const step = steps.pop(); pool = pool.filter(c => c.id !== step.result.id); pool.push(...step.tokens.filter(t => typeof t !== 'string')); tokens = [...step.tokens]; }
+  feedback('Take it one step at a time.'); renderBuilder();
+};
+$('reset').onclick = () => { resetBuilder(); feedback('Fresh thinking. Same five cards.'); };
+$('calculate').onclick = () => {
+  try { const result = evaluate(tokens, state.whole); result.id = `r${steps.length}`; result.step = steps.length + 1; const previous = [...tokens]; pool = pool.filter(c => !tokens.includes(c)); pool.push(result); steps.push({ tokens: previous, result }); tokens = []; feedback(`Step ${steps.length} makes ${format(result.value)}. Use your green result card next, or check your solution.`); renderBuilder(); }
+  catch (error) { feedback(error.message, 'error'); }
+};
+$('submit').onclick = () => {
+  try {
+    const name = $('player').value.trim().replace(/\s+/g, ' '); if (!name) { $('player').focus(); throw new Error('Enter or choose a name so we can give you the point.'); }
+    const result = tokens.length ? evaluate(tokens, state.whole) : pool.length === 1 ? pool[0] : null;
+    if (!result || !isWinner(result, state.target, state.hand.map((_, i) => `c${i}`))) throw new Error('Use all five cards exactly once and reach the target. You can do this in one line or several steps.');
+    const key = signature(result.tree);
+    if (state.answers.some(a => a.signature === key)) throw new Error('That solution already scored this round. Try a different calculation! Reordering or regrouping + or × counts as the same answer.');
+    let player = state.players.find(p => p.name.toLocaleLowerCase() === name.toLocaleLowerCase());
+    if (!player) { player = { name, score: 0 }; state.players.push(player); }
+    player.score++; state.answers.push({ name: player.name, expression: expression(result.tree), signature: key }); awarded = true; save(); render(); renderBuilder();
+    feedback(`Krypto! ${player.name} gets a point! Press Krypto! for another solution, or redeal for the next round.`, 'success'); celebrate(); tone([523, 659, 784, 1047], .16);
+  } catch (error) { feedback(error.message, 'error'); }
+};
+$('whole').onchange = () => { state.nextWhole = $('whole').checked; save(); };
+$('rules').onclick = () => $('rules-dialog').showModal();
+document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => $(b.dataset.close).close());
+$('sound').onclick = () => { state.sound = !state.sound; save(); render(); };
+let audio;
+function tone(notes, duration) {
+  if (!state.sound) return;
+  try {
+    audio ||= new (window.AudioContext || window.webkitAudioContext)(); audio.resume();
+    notes.forEach((frequency, i) => { const oscillator = audio.createOscillator(), gain = audio.createGain(), start = audio.currentTime + i * duration; oscillator.type = 'sine'; oscillator.frequency.value = frequency; gain.gain.setValueAtTime(0, start); gain.gain.linearRampToValueAtTime(.12, start + .01); gain.gain.exponentialRampToValueAtTime(.001, start + duration * 2); oscillator.connect(gain); gain.connect(audio.destination); oscillator.start(start); oscillator.stop(start + duration * 2); });
+  } catch { /* Sound is optional when browser audio is unavailable. */ }
+}
+let animation;
+function celebrate() {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  cancelAnimationFrame(animation);
+  const canvas = $('confetti'), context = canvas.getContext('2d'); if (!context) return;
+  canvas.width = innerWidth; canvas.height = innerHeight;
+  const pieces = Array.from({ length: 130 }, () => ({ x: Math.random() * canvas.width, y: -Math.random() * canvas.height, vx: Math.random() * 3 - 1.5, vy: Math.random() * 3 + 2, r: Math.random() * 6, c: ['#c7da80', '#e89857', '#2f754b', '#e3c65b'][Math.floor(Math.random() * 4)] }));
+  const start = performance.now();
+  function frame(time) { context.clearRect(0, 0, canvas.width, canvas.height); for (const p of pieces) { p.x += p.vx; p.y += p.vy; p.r += .04; context.save(); context.translate(p.x, p.y); context.rotate(p.r); context.fillStyle = p.c; context.fillRect(-3, -5, 6, 10); context.restore(); } if (time - start < 4500) animation = requestAnimationFrame(frame); else context.clearRect(0, 0, canvas.width, canvas.height); }
+  animation = requestAnimationFrame(frame);
+}
+render();
