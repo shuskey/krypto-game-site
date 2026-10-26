@@ -10,6 +10,8 @@ Open http://127.0.0.1:5173. Run `npm test` for the arithmetic/deck tests, and `n
 
 ## Playing
 
+The game uses one viewport: the green play area contains the dealt cards and Krypto button. Calling Krypto replaces the large cards with the solution builder; **Back to cards** returns to the deal. The right score rail shows colored player initials and points. Expand it with the chevron to see full names and this round’s answers. On narrower screens it opens over the table. Long score lists and step histories scroll within their own panels; the primary controls stay in place. Very short windows may require page scrolling to keep controls readable.
+
 Press **New game** to deal five cards and a target. Press the green **Krypto!** button when someone has an answer, then type or select their name. Tap cards and operations to build an expression. **=** makes a green result card that can be used in later lines, providing grouping without parentheses. Standard arithmetic precedence applies within each line. **Undo** removes the last token or, from an empty line, reopens the last calculation. **Clear** resets the attempt.
 
 **Check my solution** awards one point only if all five original cards are used exactly once and the result matches the target. Different solutions can score in the same round. Reordering/regrouping addition and multiplication does not create a new solution; other structurally different expressions count separately. A solution already scored by any player cannot score again that round.

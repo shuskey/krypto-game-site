@@ -34,7 +34,13 @@ function render() {
   $('scores').replaceChildren(); $('players').replaceChildren();
   if (!state.players.length) { const empty = el('div', 'empty-scores'); empty.append(el('span', 'empty-icon', '♧'), el('p', '', 'No names on the board. Yet.'), el('p', '', 'The first “Krypto!” is yours.')); $('scores').append(empty); }
   [...state.players].sort((a, b) => b.score - a.score).forEach(p => {
-    const row = el('div', 'score-row'); row.append(el('span', 'avatar', p.name.slice(0, 2).toUpperCase()), el('span', 'score-name', p.name), el('strong', 'score-points', p.score)); $('scores').append(row);
+    const row = el('div', 'score-row'); row.title = `${p.name}: ${p.score} points`;
+    row.setAttribute('aria-label', `${p.name}: ${p.score} points`);
+    const initials = p.name.split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase();
+    const avatar = el('span', 'avatar', initials);
+    let hue = 0; for (const ch of p.name) hue = (hue * 31 + ch.charCodeAt(0)) % 360;
+    avatar.style.background = `hsl(${hue} 35% 80%)`; avatar.style.color = `hsl(${hue} 35% 22%)`;
+    row.append(avatar, el('span', 'score-name', p.name), el('strong', 'score-points', p.score)); $('scores').append(row);
     const option = el('option'); option.value = p.name; $('players').append(option);
   });
   $('answers-section').classList.toggle('hidden', !state.answers.length); $('answers').replaceChildren();
@@ -50,7 +56,11 @@ function tokenNode(t, clickable = false) {
   return e;
 }
 function renderBuilder() {
-  $('workspace').classList.toggle('hidden', !editing); if (!editing) return;
+  $('workspace').classList.toggle('hidden', !editing);
+  $('table-view').classList.toggle('hidden', editing);
+  $('game-layout').classList.toggle('building', editing);
+  $('buzzer-hint').textContent = editing ? 'ANOTHER IDEA?' : 'GOT IT? PRESS IT.';
+  if (!editing) return;
   $('builder-target').textContent = state.target; $('available').replaceChildren(); $('expression').replaceChildren(); $('steps').replaceChildren();
   pool.filter(c => !tokens.includes(c)).forEach(c => { const b = tokenNode(c, true); b.disabled = tokens.length % 2 === 1 || awarded; $('available').append(b); });
   if (!tokens.length) $('expression').append(el('span', 'placeholder', awarded ? 'Another idea? Press Krypto! again.' : 'Your calculation goes here…'));
@@ -71,7 +81,7 @@ $('new-game').onclick = () => state.hand || state.players.length ? $('confirm-di
 $('keep-game').onclick = () => $('confirm-dialog').close();
 $('confirm-new').onclick = () => { $('confirm-dialog').close(); $('player').value = ''; deal(true); };
 $('redeal').onclick = () => deal();
-$('krypto').onclick = () => { editing = true; $('player').value = ''; resetBuilder(); feedback('First, enter or choose your name. Then show us your idea.'); tone([523, 659], .09); $('workspace').scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth', block: 'start' }); $('player').focus({ preventScroll: true }); };
+$('krypto').onclick = () => { editing = true; $('player').value = ''; resetBuilder(); feedback('Enter your name, then show us your idea.'); tone([523, 659], .09); $('player').focus({ preventScroll: true }); };
 $('player').addEventListener('change', () => {
   const name = $('player').value.trim().replace(/\s+/g, ' '); if (!name) return;
   if (!state.players.some(p => p.name.toLocaleLowerCase() === name.toLocaleLowerCase())) state.players.push({ name, score: 0 });
@@ -106,6 +116,13 @@ $('whole').onchange = () => { state.nextWhole = $('whole').checked; save(); };
 $('rules').onclick = () => $('rules-dialog').showModal();
 document.querySelectorAll('[data-close]').forEach(b => b.onclick = () => $(b.dataset.close).close());
 $('sound').onclick = () => { state.sound = !state.sound; save(); render(); };
+$('toggle-scores').onclick = () => {
+  const open = $('game-layout').classList.toggle('scores-open');
+  $('toggle-scores').setAttribute('aria-expanded', open);
+  $('toggle-scores').setAttribute('aria-label', open ? 'Collapse scores' : 'Expand scores');
+  $('score-chevron').textContent = open ? '›' : '‹';
+};
+$('toggle-scores').setAttribute('aria-label', 'Expand scores');
 let audio;
 function tone(notes, duration) {
   if (!state.sound) return;

@@ -9,34 +9,29 @@
   <link rel="stylesheet" href="./style.css">
 </head>
 <body>
-  <header class="topbar"><a class="brand" href="./" aria-label="Krypto home"><span class="brand-mark">k<span>✳</span></span> krypto<span class="brand-dot">!</span></a><nav><button id="sound" class="quiet" aria-pressed="true">♪ Sound on</button><button id="rules" class="quiet">How to play <span class="question">?</span></button></nav></header>
+  <header class="topbar"><a class="brand" href="./" aria-label="Krypto home"><span class="brand-mark">k<span>✳</span></span> krypto<span class="brand-dot">!</span></a><span class="tagline">Five cards. Endless possibility.</span><nav><button id="new-game" class="quiet">New game ↗</button><button id="sound" class="quiet" aria-pressed="true">♪ Sound on</button><button id="rules" class="quiet">How to play <span class="question">?</span></button></nav></header>
   <main>
-    <section class="intro"><div><p class="eyebrow">THE EVERYONE-AT-THE-TABLE MATH GAME</p><h1>Five cards.<br>Endless <em>possibility.</em></h1><p class="subhead">A little arithmetic. A spark of inspiration.<br>See the answer? You know what to shout.</p></div><div class="intro-note"><span class="spark">✳</span><span>Good company.<br>Great little brain workout.</span></div></section>
-    <div class="game-layout">
-      <div class="table-column">
-        <section class="table" aria-label="Dealt cards">
-          <div class="table-heading"><span><span class="live-dot"></span> <span id="round-label">READY WHEN YOU ARE</span></span><span id="deck-label">56-CARD DECK</span></div>
-          <div class="deal-labels"><span>YOUR FIVE CARDS</span><span>THE TARGET</span></div>
-          <div id="deal" class="deal"></div>
-          <p id="table-caption" class="table-caption">Deal a hand. Find a way to make the target.</p>
-          <div class="table-bottom"><div><span class="mini-label">THE CHALLENGE</span><p>Use every card. Make the target.</p></div><button id="redeal" class="redeal" disabled>↻ <span>Redeal</span></button></div>
-        </section>
-        <section class="callout"><div><p class="eyebrow">GOT A BRIGHT IDEA?</p><h2>Make your move.</h2><p>Hit the button. Claim your answer.<br>Let’s see your thinking.</p></div><div class="buzzer-wrap"><button id="krypto" class="buzzer" disabled>Krypto!</button><span>PRESS WHEN YOU’VE GOT IT</span></div></section>
-        <section id="workspace" class="workspace hidden" aria-label="Solution builder"><div class="section-top"><div><p class="eyebrow">SHOW YOUR THINKING</p><h2 id="builder-title">Build your solution.</h2></div><button id="cancel" class="quiet">Close ×</button></div>
-          <label class="name-label" for="player">Who called Krypto?</label><input id="player" list="players" maxlength="32" placeholder="Type or choose your name" autocomplete="off"><datalist id="players"></datalist>
-          <p class="builder-help">Tap cards and operations in order. Press <strong>=</strong> to turn a line into a reusable result card. × and ÷ go before + and −.</p>
-          <div id="steps" class="steps"></div><div id="available" class="available" aria-label="Available cards"></div>
-          <div class="expression-wrap"><div id="expression" class="expression" aria-label="Current calculation"></div><div class="target-inline"><span>=</span><strong id="builder-target"></strong></div></div>
-          <div class="builder-tools"><div id="operators" class="operators"><button data-op="+" aria-label="Add">+</button><button data-op="-" aria-label="Subtract">−</button><button data-op="×" aria-label="Multiply">×</button><button data-op="÷" aria-label="Divide">÷</button><button id="calculate" class="calculate" aria-label="Calculate line">=</button></div><div><button id="undo" class="quiet">↶ Undo</button><button id="reset" class="quiet">Clear</button></div></div>
-          <p id="feedback" class="feedback" role="status" aria-live="polite">Start with any card above.</p><button id="submit" class="primary submit">Check my solution <span>↗</span></button>
-        </section>
-        <section id="answers-section" class="answers-section hidden"><p class="eyebrow">THIS ROUND’S BRIGHT IDEAS</p><div id="answers"></div></section>
-      </div>
-      <aside class="sidebar"><section class="scoreboard"><div class="score-title"><h2>The scorecard</h2><span>✧</span></div><p>A little friendly competition.</p><div id="scores"></div><div class="score-foot">ONE SOLUTION. ONE POINT.<br>MORE IDEAS? KEEP THEM COMING.</div></section>
-      <section class="game-controls"><button id="new-game" class="primary">New game <span>↗</span></button><p>A fresh table & a fresh scorecard.</p></section>
-      <section class="table-rules"><span class="rule-icon">✳</span><h3>Every card counts.</h3><p>Use all five cards exactly once with +, −, ×, and ÷. Build little steps to bring a big idea together.</p><label class="toggle-label"><input id="whole" type="checkbox" checked> Whole-number mode</label><p class="small">No negative or fractional steps. Changes apply on the next deal.</p></section></aside>
+    <div class="intro"><h1>A little math. <em>A bright idea.</em></h1><span>Use every card. Make the target.</span></div>
+    <div id="game-layout" class="game-layout">
+      <section class="arena" aria-label="Krypto play area">
+        <div class="table-heading"><span><span class="live-dot"></span><span id="round-label">READY WHEN YOU ARE</span></span><span id="deck-label">56-CARD DECK</span></div>
+        <div class="play-views">
+          <section id="table-view" class="table" aria-label="Dealt cards"><div class="deal-labels"><span>YOUR FIVE CARDS</span><span>THE TARGET</span></div><div id="deal" class="deal"></div><p id="table-caption" class="table-caption">Deal a hand. Find a way to make the target.</p><p class="table-invitation">See the answer? <em>You know what to shout.</em></p></section>
+          <section id="workspace" class="workspace hidden" aria-label="Solution builder">
+            <div class="section-top"><h2 id="builder-title">Build your solution.</h2><button id="cancel" class="quiet">Back to cards ×</button></div>
+            <div class="name-row"><label class="name-label" for="player">Who called Krypto?</label><input id="player" list="players" maxlength="32" placeholder="Type or choose your name" autocomplete="off"><datalist id="players"></datalist></div>
+            <p class="builder-help">Tap cards & operations. <strong>=</strong> makes a reusable result card. × and ÷ go first.</p>
+            <div id="steps" class="steps" aria-label="Completed steps"></div><div id="available" class="available" aria-label="Available cards"></div>
+            <div class="expression-wrap"><div id="expression" class="expression" aria-label="Current calculation"></div><div class="target-inline"><span>=</span><strong id="builder-target"></strong></div></div>
+            <div class="builder-tools"><div id="operators" class="operators"><button data-op="+" aria-label="Add">+</button><button data-op="-" aria-label="Subtract">−</button><button data-op="×" aria-label="Multiply">×</button><button data-op="÷" aria-label="Divide">÷</button><button id="calculate" class="calculate" aria-label="Calculate line">=</button></div><div><button id="undo" class="quiet">↶ Undo</button><button id="reset" class="quiet">Clear</button></div><button id="submit" class="primary submit">Check solution ↗</button></div>
+            <p id="feedback" class="feedback" role="status" aria-live="polite">Start with any card above.</p>
+          </section>
+        </div>
+        <div class="table-bottom"><button id="redeal" class="redeal">↗ <span>Deal first hand</span></button><div class="mode-control"><label class="toggle-label"><input id="whole" type="checkbox" checked> Whole numbers</label><span>Changes on next deal</span></div><div class="buzzer-wrap"><span id="buzzer-hint">GOT IT? PRESS IT.</span><button id="krypto" class="buzzer" disabled>Krypto!</button></div></div>
+      </section>
+      <aside id="score-panel" class="sidebar" aria-label="Scores"><button id="toggle-scores" class="score-toggle" aria-expanded="false" aria-controls="score-content"><span class="rail-title">✧</span><span class="expanded-label">The scorecard</span><span id="score-chevron">‹</span></button><div id="score-content" class="score-content"><div id="scores"></div><p class="score-foot">ONE SOLUTION. ONE POINT.</p><section id="answers-section" class="answers-section hidden"><p class="eyebrow">THIS ROUND’S IDEAS</p><div id="answers"></div></section></div></aside>
     </div>
-    <footer><span class="footer-brand">krypto!</span><span>Less scrolling. More solving.</span><span>Made for a table full of people.</span></footer>
+    <footer><span>Every card counts. Every idea welcome.</span><span>Your table rules · One point per different solution</span></footer>
   </main>
   <dialog id="rules-dialog"><button class="dialog-close" data-close="rules-dialog" aria-label="Close rules">×</button><p class="eyebrow">A LITTLE MATH. A LOT OF POSSIBILITY.</p><h2>Let’s play Krypto!</h2><ol><li>Deal five number cards and a sixth target card.</li><li>Use each of the five cards exactly once with addition, subtraction, multiplication, or division to reach the target.</li><li>Found a solution? Hit <strong>Krypto!</strong>, enter your name, and tap cards and operations to build it.</li><li>Press <strong>=</strong> to make a result card. Use that card in your next step: it’s a friendly way to group calculations.</li><li>Check your solution for a point and a celebration! Hit Krypto again to try a different answer. Reordering or regrouping addition or multiplication counts as the same answer.</li></ol><p>Whole-number mode requires nonnegative integers at every operation. Turn it off for exact fractions and negative numbers, starting on the next deal.</p><p><strong>Our table rules:</strong> one point per different solution, shared across players for the round. No timer or penalties. Redeal keeps your players and scores; New game clears both after confirmation. Scores are saved in this browser.</p><p>The 56-card deck has three each of 1–6, four each of 7–10, two each of 11–17, and one each of 18–25. Each deal draws without replacement; the deck reshuffles when fewer than six cards remain. Some deals may have no solution.</p><a href="https://en.wikipedia.org/wiki/Krypto_(game)" target="_blank" rel="noreferrer">Read about the original game ↗</a></dialog>
   <dialog id="confirm-dialog"><p class="eyebrow">A CLEAN SLATE</p><h2>Are you sure?</h2><p>Starting a new game clears everyone’s scores, saved names, and the current round.</p><div class="dialog-actions"><button id="keep-game" class="quiet">Keep playing</button><button id="confirm-new" class="primary">Yes, new game</button></div></dialog>
