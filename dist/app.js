@@ -12,6 +12,7 @@ function restore() {
   } catch { return fresh(); }
 }
 let state = restore(), pool = [], tokens = [], steps = [], editing = false, awarded = false;
+const hasPlayerName = () => $('player').value.trim().length > 0;
 function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch { $('storage-status').textContent = 'Storage unavailable · Session only'; } }
 function el(tag, className, value) { const e = document.createElement(tag); if (className) e.className = className; if (value !== undefined) e.textContent = value; return e; }
 function feedback(message, type = '') { $('feedback').textContent = message; $('feedback').className = `feedback ${type}`; }
@@ -70,16 +71,18 @@ function renderBuilder() {
   $('player').disabled = awarded;
   $('buzzer-hint').textContent = editing ? 'ANOTHER IDEA?' : 'GOT IT? PRESS IT.';
   if (!editing) return;
+  const locked = !hasPlayerName() || awarded;
+  $('workspace').classList.toggle('needs-name', !hasPlayerName());
   $('builder-target').textContent = state.target; $('available').replaceChildren(); $('expression').replaceChildren(); $('steps').replaceChildren();
-  pool.filter(c => !tokens.includes(c)).forEach(c => { const b = tokenNode(c, true); b.disabled = tokens.length % 2 === 1 || awarded; $('available').append(b); });
+  pool.filter(c => !tokens.includes(c)).forEach(c => { const b = tokenNode(c, true); b.disabled = tokens.length % 2 === 1 || locked; $('available').append(b); });
   if (!tokens.length) $('expression').append(el('span', 'placeholder', awarded ? 'Another idea? Press Krypto! again.' : 'Your calculation goes here…'));
   else tokens.forEach(t => $('expression').append(tokenNode(t)));
   steps.forEach((s, i) => { const row = el('div', 'step'); row.append(el('span', 'step-label', `STEP ${i + 1}`), el('span', '', s.tokens.map(t => typeof t === 'string' ? t : format(t.value)).join(' ')), el('span', '', '='), el('strong', '', format(s.result.value))); $('steps').append(row); });
-  document.querySelectorAll('[data-op]').forEach(b => b.disabled = !tokens.length || tokens.length % 2 === 0 || awarded);
-  $('calculate').disabled = tokens.length < 3 || tokens.length % 2 === 0 || awarded;
-  $('undo').disabled = awarded || (!tokens.length && !steps.length); $('reset').disabled = awarded;
+  document.querySelectorAll('[data-op]').forEach(b => b.disabled = !tokens.length || tokens.length % 2 === 0 || locked);
+  $('calculate').disabled = tokens.length < 3 || tokens.length % 2 === 0 || locked;
+  $('undo').disabled = locked || (!tokens.length && !steps.length); $('reset').disabled = locked;
 }
-function selectCard(id) { if (awarded || tokens.length % 2) return; tokens.push(pool.find(c => c.id === id)); feedback('Keep going, or press = to save this step.'); renderBuilder(); checkSolution(); }
+function selectCard(id) { if (!hasPlayerName() || awarded || tokens.length % 2) return; tokens.push(pool.find(c => c.id === id)); feedback('Keep going, or press = to save this step.'); renderBuilder(); checkSolution(); }
 function deal(clear = false) {
   if (clear) { const { sound, nextWhole, deckType } = state; state = { ...fresh(), sound, nextWhole, deckType }; }
   const next = dealHand(state.deckType);
@@ -90,7 +93,11 @@ $('new-game').onclick = () => state.hand || state.players.length ? $('confirm-di
 $('keep-game').onclick = () => $('confirm-dialog').close();
 $('confirm-new').onclick = () => { $('confirm-dialog').close(); $('player').value = ''; deal(true); };
 $('redeal').onclick = () => deal();
-$('krypto').onclick = () => { editing = true; $('player').value = ''; resetBuilder(); feedback('Enter your name, then show us your idea.'); tone([523, 659], .09); $('player').focus({ preventScroll: true }); };
+$('krypto').onclick = () => { editing = true; $('player').value = ''; resetBuilder(); feedback('Enter or choose your name to unlock the cards.'); tone([523, 659], .09); $('player').focus({ preventScroll: true }); };
+$('player').addEventListener('input', () => {
+  renderBuilder();
+  feedback(hasPlayerName() ? 'You’re ready! Choose a card to start your solution.' : 'Enter or choose your name to unlock the cards.');
+});
 $('player').addEventListener('change', () => {
   const name = $('player').value.trim().replace(/\s+/g, ' '); if (!name) return;
   if (!state.players.some(p => p.name.toLocaleLowerCase() === name.toLocaleLowerCase())) state.players.push({ name, score: 0 });
@@ -98,19 +105,21 @@ $('player').addEventListener('change', () => {
 });
 $('player').addEventListener('keydown', event => { if (event.key === 'Enter') { $('player').blur(); checkSolution(); } });
 $('cancel').onclick = () => { editing = false; renderBuilder(); };
-document.querySelectorAll('[data-op]').forEach(b => b.onclick = () => { if (tokens.length % 2 && !awarded) { tokens.push(b.dataset.op); renderBuilder(); } });
+document.querySelectorAll('[data-op]').forEach(b => b.onclick = () => { if (hasPlayerName() && tokens.length % 2 && !awarded) { tokens.push(b.dataset.op); renderBuilder(); } });
 $('undo').onclick = () => {
+  if (!hasPlayerName() || awarded) return;
   if (tokens.length) tokens.pop();
   else if (steps.length) { const step = steps.pop(); pool = pool.filter(c => c.id !== step.result.id); pool.push(...step.tokens.filter(t => typeof t !== 'string')); tokens = [...step.tokens]; }
   feedback('Take it one step at a time.'); renderBuilder();
 };
-$('reset').onclick = () => { resetBuilder(); feedback('Fresh thinking. Same five cards.'); };
+$('reset').onclick = () => { if (!hasPlayerName() || awarded) return; resetBuilder(); feedback('Fresh thinking. Same five cards.'); };
 $('calculate').onclick = () => {
+  if (!hasPlayerName() || awarded) return;
   try { const result = evaluate(tokens, state.whole); result.id = `r${steps.length}`; result.step = steps.length + 1; const previous = [...tokens]; pool = pool.filter(c => !tokens.includes(c)); pool.push(result); steps.push({ tokens: previous, result }); tokens = []; feedback(`Step ${steps.length} makes ${format(result.value)}. Use your result card next.`); renderBuilder(); checkSolution(); }
   catch (error) { feedback(error.message, 'error'); }
 };
 function checkSolution() {
-  if (!editing || awarded || (tokens.length && tokens.length % 2 === 0)) return;
+  if (!editing || !hasPlayerName() || awarded || (tokens.length && tokens.length % 2 === 0)) return;
   try {
     const used = tokens.length ? tokens.filter(t => typeof t !== 'string').flatMap(t => t.sources) : pool.length === 1 ? pool[0].sources : [];
     if (used.length !== 5) return;

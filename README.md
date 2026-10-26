@@ -12,9 +12,9 @@ Open http://127.0.0.1:5173. Run `npm test` for the arithmetic/deck tests, and `n
 
 The game uses one viewport: the green play area contains the dealt cards and Krypto button. Calling Krypto replaces the large cards with the solution builder; **Back to cards** returns to the deal. The right score rail shows colored player initials and points. Expand it with the chevron to see full names and this round’s answers. On narrower screens it opens over the table. Long score lists and step histories scroll within their own panels; the primary controls stay in place. Very short windows may require page scrolling to keep controls readable.
 
-Press **New game** to deal five cards and a target. Press the green **Krypto!** button when someone has an answer, then type or select their name. Tap cards and operations to build an expression. **=** makes a green result card that can be used in later lines, providing grouping without parentheses. Standard arithmetic precedence applies within each line. **Undo** removes the last token or, from an empty line, reopens the last calculation. **Clear** resets the attempt.
+Press **New game** to deal five cards and a target. Press the green **Krypto!** button when someone has an answer, then type or select their name to unlock the solution controls. Blank or whitespace-only names keep the cards and operations disabled. Tap cards and operations to build an expression. **=** makes a green result card that can be used in later lines, providing grouping without parentheses. Standard arithmetic precedence applies within each line. **Undo** removes the last token or, from an empty line, reopens the last calculation. **Clear** resets the attempt.
 
-The game automatically awards one point as soon as all five original cards are used exactly once and the result matches the target and a player name is present. If the solution is built before entering a name, enter the name and press Enter or leave the field to claim the point. Different solutions can score in the same round. Reordering/regrouping addition and multiplication does not create a new solution; other structurally different expressions count separately. A solution already scored by any player cannot score again that round.
+The game automatically awards one point as soon as all five original cards are used exactly once and the result matches the target and a player name is present. Different solutions can score in the same round. Reordering/regrouping addition and multiplication does not create a new solution; other structurally different expressions count separately. A solution already scored by any player cannot score again that round.
 
 **Redeal** preserves players and scores. **New game** asks for confirmation, then resets the player list and scores. Names, scores, current deal, selected deck, settings, and winning answers are saved in browser localStorage. Unfinished attempts are not saved. Storage is local to that browser and origin; multiple devices/tabs do not synchronize.
 
@@ -24,6 +24,6 @@ Whole-number mode defaults on and disallows fractions and negative intermediate 
 
 Rules and deck reference: [Krypto on Wikipedia](https://en.wikipedia.org/wiki/Krypto_(game)). All visuals are original HTML/CSS, inspired by a physical tabletop and the supplied button reference. Celebration sound is synthesized locally with Web Audio. Google Fonts is optional; local system fonts provide a fallback when offline.
 
-## Later Sites deployment
+## Sites deployment
 
-The `dist/` folder can be hosted as a static ChatGPT Site. No Site has been registered or deployed yet. Future hosting should configure `static.directory` as `dist` and preserve this source.
+The public Site is https://krypto-game.chummy-bard-6128.chatgpt.site. The static files in `dist/` are deployed using the project configuration in `.openai/hosting.json`. Player names and scores stay in each visitor’s browser.
