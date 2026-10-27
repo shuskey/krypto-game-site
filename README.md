@@ -38,3 +38,7 @@ A light bulb on **Krypto King**, above **Redeal**, means a solution is cached. C
 ## Sharing
 
 **Share** opens an original 1200×630 PNG with an intro-copy button and image download. Open Graph and X card metadata use the same image and public Site URL. Regenerate the image with `tools/create_social_preview.py` using Python with Pillow and the listed macOS fonts. The intro is also available in `share-intro.md`.
+
+## Analytics
+
+Production uses Plausible for per-deck visits and viewing time, hands shown, Krypto King presses, human-player additions/counts, and validated wins. Player names and solutions are excluded. Local previews do not transmit analytics. See [the analytics guide](docs/analytics.md) for the dashboard link, event definitions, and average-hands formulas.

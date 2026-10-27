@@ -1,5 +1,6 @@
 import { dealHand, card, apply, evaluate, format, signature, isWinner } from './engine.js';
 import { COMPUTER_NAME, recordSolution } from './scoring.js';
+import { createAnalytics, humanPlayerCount } from './analytics.js';
 const $ = id => document.getElementById(id);
 const KEY = 'krypto-table-v1';
 const fresh = () => ({ players: [], deckType: 'standard', hand: null, target: null, round: 0, answers: [], whole: true, nextWhole: true, sound: true, computerDone: false, computerOutcome: 'idle' });
@@ -15,6 +16,8 @@ function restore() {
 }
 let state = restore(), pool = [], tokens = [], steps = [], editing = false, awarded = false;
 let solverWorker = null, cachedSolution = null, computerMode = false, thinking = false, searchGeneration = 0;
+const analytics = createAnalytics();
+const humanPlayers = () => humanPlayerCount(state.players);
 const hasPlayerName = () => $('player').value.trim().length > 0;
 function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch { $('storage-status').textContent = 'Storage unavailable · Session only'; } }
 function el(tag, className, value) { const e = document.createElement(tag); if (className) e.className = className; if (value !== undefined) e.textContent = value; return e; }
@@ -97,12 +100,13 @@ function renderBuilder() {
   $('undo').disabled = locked || (!tokens.length && !steps.length); $('reset').disabled = locked;
 }
 function selectCard(id) { if (computerMode || !hasPlayerName() || awarded || tokens.length % 2) return; tokens.push(pool.find(c => c.id === id)); feedback('Keep going, or press = to save this step.'); renderBuilder(); checkSolution(); }
-function deal(clear = false) {
+function deal(clear = false, reason = clear ? 'new-game' : 'redeal') {
   stopComputer(); computerMode = false;
   if (clear) { const { sound, nextWhole, deckType } = state; state = { ...fresh(), sound, nextWhole, deckType }; }
   const next = dealHand(state.deckType);
   state.hand = next.hand; state.target = next.target; state.round++; state.answers = []; state.whole = state.nextWhole; state.computerDone = false; state.computerOutcome = 'idle';
   editing = false; save(); render(); renderBuilder(); startComputerSearch();
+  analytics.handShown(state.deckType, reason, humanPlayers());
 }
 $('new-game').onclick = () => state.hand || state.players.length ? $('confirm-dialog').showModal() : deal(true);
 $('keep-game').onclick = () => $('confirm-dialog').close();
@@ -117,7 +121,9 @@ $('player').addEventListener('change', () => {
   if (computerMode) return;
   const name = $('player').value.trim().replace(/\s+/g, ' '); if (!name) return;
   if (name.toLowerCase() === COMPUTER_NAME.toLowerCase()) { feedback('Krypto King plays through the Krypto King button. Choose your own name.', 'error'); return; }
-  if (!state.players.some(p => p.name.toLocaleLowerCase() === name.toLocaleLowerCase())) state.players.push({ name, score: 0 });
+  if (!state.players.some(p => p.name.toLocaleLowerCase() === name.toLocaleLowerCase())) {
+    state.players.push({ name, score: 0 }); analytics.playerAdded(humanPlayers());
+  }
   save(); render(); checkSolution();
 });
 $('player').addEventListener('keydown', event => { if (event.key === 'Enter') { $('player').blur(); checkSolution(); } });
@@ -144,7 +150,10 @@ function checkSolution() {
     if (!result) return;
     if (!isWinner(result, state.target, state.hand.map((_, i) => `c${i}`))) { feedback(`That makes ${format(result.value)}. The target is ${state.target}. Undo or clear to try another way.`); return; }
     const name = $('player').value.trim().replace(/\s+/g, ' ');
+    const previousCount = humanPlayers();
     const player = recordSolution(state, result, name);
+    if (humanPlayers() > previousCount) analytics.playerAdded(humanPlayers());
+    analytics.solutionFound(false, humanPlayers());
     awarded = true; save(); render(); renderBuilder();
     if (cachedSolution && state.answers.some(a => a.signature === signature(cachedSolution.tree))) startComputerSearch();
     feedback(`Krypto! ${player.name} gets a point! Press Krypto! for another solution, or redeal for the next round.`, 'success'); celebrate(); tone([523, 659, 784, 1047], .16);
@@ -201,12 +210,14 @@ function startComputerSearch() {
   } catch { computerError(); }
 }
 $('computer').onclick = () => {
-  if (state.computerOutcome === 'error') { startComputerSearch(); return; }
+  if (state.computerOutcome === 'error') { analytics.kingPressed('retry'); startComputerSearch(); return; }
   if (thinking || state.computerDone || !cachedSolution || state.computerOutcome !== 'ready') return;
+  analytics.kingPressed('claim');
   try {
     computerMode = true; editing = true; $('player').value = COMPUTER_NAME;
     const result = showComputerTree(cachedSolution.tree);
     recordSolution(state, result, COMPUTER_NAME, true);
+    analytics.solutionFound(true, humanPlayers());
     state.computerDone = true; state.computerOutcome = 'found'; awarded = true;
     save(); render(); renderBuilder();
     feedback('Krypto! Krypto King gets one point. Redeal for a new hand.', 'success');
@@ -216,7 +227,7 @@ $('computer').onclick = () => {
     feedback(error.message, 'error'); startComputerSearch(); renderBuilder();
   }
 };
-$('deck-select').onchange = () => { state.deckType = $('deck-select').value; deal(); };
+$('deck-select').onchange = () => { state.deckType = $('deck-select').value; deal(false, 'deck-change'); };
 $('whole').onchange = () => { state.nextWhole = $('whole').checked; save(); };
 $('rules').onclick = () => $('rules-dialog').showModal();
 $('share').onclick = () => { $('share-feedback').textContent = ''; $('share-dialog').showModal(); };
@@ -254,4 +265,4 @@ function celebrate() {
   function frame(time) { context.clearRect(0, 0, canvas.width, canvas.height); for (const p of pieces) { p.x += p.vx; p.y += p.vy; p.r += .04; context.save(); context.translate(p.x, p.y); context.rotate(p.r); context.fillStyle = p.c; context.fillRect(-3, -5, 6, 10); context.restore(); } if (time - start < 4500) animation = requestAnimationFrame(frame); else context.clearRect(0, 0, canvas.width, canvas.height); }
   animation = requestAnimationFrame(frame);
 }
-if (!state.hand) deal(); else { render(); startComputerSearch(); }
+if (!state.hand) deal(false, 'initial'); else { render(); startComputerSearch(); analytics.handShown(state.deckType, 'resume', humanPlayers()); }
