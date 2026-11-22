@@ -8,6 +8,74 @@ npm run dev
 
 Open http://127.0.0.1:5173. Run `npm test` for the arithmetic/deck tests, and `npm run build` for JavaScript syntax checks. The production-ready static files are in `dist/`; there is no compilation step. The development server listens only on the local computer.
 
+## Learning Playwright
+
+Playwright opens a real browser, interacts with the game, and checks what a player sees. The existing `npm test` tests game logic directly; `npm run test:e2e` tests the page through Chromium. Browser testing needs the development dependencies below, even though serving the game itself needs no dependencies.
+
+### 1. Install once per checkout
+
+Use Node.js 22 or newer. From this repository's folder:
+
+```sh
+npm ci
+npx playwright install chromium
+```
+
+`npm ci` installs the versions recorded in `package-lock.json`; the second command downloads Playwright's matching Chromium browser. On Linux, use `npx playwright install --with-deps chromium` to also install required system libraries.
+
+### 2. Run the starter tests locally
+
+```sh
+npm run test:e2e
+```
+
+You do **not** need to deploy or start the server first. `playwright.config.js` starts `npm run dev`, waits for http://127.0.0.1:5173, and shuts down its server afterward. It can reuse a server you've already started locally.
+
+The four tests in `e2e/game.spec.js` check the initial cards and rules dialog, player-name gating and a two-card calculation, deck selection surviving a reload, and a winning solution that increases a player's score from 0 to 1. Each test gets a fresh browser context with separate localStorage. The two-card calculation test reads the visible cards so it works with random deals; it does not assume the hand is solvable. The winning test seeds a saved hand of 1, 2, 3, 4, 5 with target 15, then uses the game controls to enter `1 + 2 + 3 + 4 + 5`. The game awards the point automatically when the fifth card is selected.
+
+To run only the seeded winning test:
+
+```sh
+npm run test:e2e -- -g "solves seeded cards"
+```
+
+### 3. Watch and explore
+
+```sh
+npm run test:e2e:headed
+npm run test:e2e:ui
+```
+
+Run either command: `headed` shows the browser while tests execute; `ui` opens Playwright's interactive runner, where you can select tests and inspect actions. To step through a single test with the Inspector:
+
+```sh
+npm run test:e2e -- --debug -g "requires a player name"
+```
+
+Read that test alongside the browser. `page` is the browser tab; `getByRole` and `getByLabel` find controls by their accessible names; `click` and `fill` perform actions; `await expect(...)` waits for the expected page state. These assertions retry automatically, so there are no fixed sleeps.
+
+Try changing the expected available-card count from `4` to `5`, run the test to see the failure, then restore `4`. View the last run's HTML report with:
+
+```sh
+npm run test:e2e:report
+```
+
+Failures include a screenshot and a trace in the report. The trace lets you inspect the page around each action. Reports and test results are ignored by Git. See the [Playwright introduction](https://playwright.dev/docs/intro) for more on running and debugging tests.
+
+### 4. Run the same tests against a deployed Site
+
+```sh
+PLAYWRIGHT_BASE_URL=https://krypto-game.chummy-bard-6128.chatgpt.site npm run test:e2e
+```
+
+When `PLAYWRIGHT_BASE_URL` is set, the config skips the local server and opens that URL instead. This checks the version currently deployed there; local edits only affect local runs until deployed. The tests block requests to `plausible.io` to keep test activity out of visitor statistics. Their names, calculations, and deck changes stay in their isolated browser storage.
+
+Sites hosting does not require production-only testing: this repo serves the same `dist/` files locally that Sites deploys. Use local tests before deployment and an optional deployed run afterward. A private Site requiring sign-in would also need an authenticated test browser; this starter does not configure that.
+
+### 5. Let GitHub run it
+
+`.github/workflows/playwright.yml` installs dependencies and Chromium, runs the unit tests and syntax checks, then runs all four browser tests against the runner's local server. It runs on pull requests targeting `main`, merge-queue checks targeting `main` (if a merge queue is used), pushes to `main` (including completed merges), and manual dispatch once the workflow is on GitHub. Open the repository's **Actions → Playwright** run to see results and download its HTML report artifact. This workflow checks source before publication; it does not deploy the Site or automatically test production. To prevent merging when tests fail, the repository's branch protection or ruleset must require the `Unit and Playwright tests` status check; workflow triggers alone do not enforce that rule.
+
 ## Playing
 
 The game uses one viewport: the green play area contains the dealt cards and Krypto button. Calling Krypto replaces the large cards with the solution builder; **Back to cards** returns to the deal. The right score rail shows colored player initials and points. Expand it with the chevron to see full names and this round’s answers. On narrower screens it opens over the table. Long score lists and step histories scroll within their own panels; the primary controls stay in place. Very short windows may require page scrolling to keep controls readable.
